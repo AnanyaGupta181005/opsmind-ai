@@ -1,0 +1,14 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY admin_dashboard.py .
+
+# Streamlit runs on 8501 by default
+EXPOSE 8501
+
+# Run Streamlit
+CMD ["streamlit", "run", "admin_dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
