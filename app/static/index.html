@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OpsMind Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:oklch(0.16 0.008 250);
+    --surface:oklch(0.205 0.010 250);
+    --surface-2:oklch(0.245 0.012 250);
+    --line:oklch(0.30 0.012 250);
+    --text:oklch(0.95 0.004 250);
+    --muted:oklch(0.70 0.010 250);
+    --muted-2:oklch(0.66 0.010 250);
+    --mint:oklch(0.74 0.15 165);
+    --mint-soft:oklch(0.27 0.03 165);
+    --blue:oklch(0.74 0.15 250);
+    --amber:oklch(0.78 0.14 75);
+    --rose:oklch(0.70 0.16 20);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font:400 15.5px/1.6 "IBM Plex Sans",system-ui,sans-serif;
+    display:flex;flex-direction:column;height:100vh;min-height:600px;
+    overflow:hidden;text-wrap:pretty}
+  a{color:var(--mint);text-decoration:none}
+  a:hover{color:var(--blue)}
+  input,select,textarea,button{font-family:"IBM Plex Sans",system-ui,sans-serif}
+  input::placeholder,textarea::placeholder{color:oklch(0.56 0.010 250)}
+  select option{background:oklch(0.21 0.010 250);color:var(--text)}
+  ::-webkit-scrollbar{width:10px}
+  ::-webkit-scrollbar-thumb{background:oklch(0.32 0.012 250);border-radius:10px}
+  ::-webkit-scrollbar-track{background:transparent}
+  @keyframes omblink{0%,60%,100%{opacity:.22}30%{opacity:1}}
+
+  header{display:flex;align-items:center;gap:22px;padding:0 30px;height:66px;flex:0 0 66px;
+    border-bottom:1px solid var(--line);background:var(--surface)}
+  .brand{display:flex;align-items:center;gap:11px}
+  .mark{width:30px;height:30px;border-radius:9px;background:var(--mint);color:var(--bg);
+    display:grid;place-items:center;font-weight:600;font-size:14px;font-family:"IBM Plex Mono",monospace}
+  .brand-name{font-weight:600;font-size:16px}
+  nav{display:flex;gap:4px}
+  .nav-btn{cursor:pointer;border:0;background:transparent;padding:8px 14px;border-radius:9px;
+    font-size:15px;font-weight:500;color:var(--muted-2)}
+  .nav-btn:hover{color:var(--text)}
+  .nav-btn.active{background:var(--mint-soft);color:var(--mint)}
+  .head-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .status-pill{font:500 10.5px/1 "IBM Plex Mono",monospace;padding:5px 9px;border-radius:999px;
+    border:1px solid var(--line);color:var(--muted-2);display:flex;gap:6px;align-items:center;
+    text-transform:uppercase;letter-spacing:.04em}
+  .status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted-2)}
+  .status-dot.on{background:var(--mint)}
+  .status-dot.mock{background:var(--amber)}
+  .signed-in{font-size:13.5px;color:var(--muted-2)}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--surface-2);display:grid;
+    place-items:center;font-weight:500;font-size:13px}
+
+  #toast{padding:13px 30px;background:var(--mint-soft);border-bottom:1px solid var(--mint);
+    color:oklch(0.92 0.06 165);font-size:14px}
+  #toast.err{background:oklch(0.27 0.05 20);border-bottom-color:var(--rose);color:oklch(0.92 0.08 20)}
+
+  #app{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+
+  /* ---- Ask ---- */
+  .ask-wrap{flex:1;display:flex;flex-direction:column;min-height:0}
+  .ask-scroll{flex:1;overflow-y:auto;padding:34px 30px 12px}
+  .ask-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+  .intro{display:flex;flex-direction:column;gap:10px;padding-top:4vh}
+  .intro h1{margin:0;font-size:30px;font-weight:600;letter-spacing:-.015em}
+  .intro p{margin:0;color:var(--muted);font-size:16px;max-width:46ch}
+  .turn-user{padding:2px 0;font-size:17px;font-weight:500}
+  .turn-agent{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:19px 21px}
+  .turn-agent .body{white-space:pre-wrap;font-size:16px}
+  .turn-agent.error .body{color:var(--rose)}
+  .source-line{margin-top:16px;padding-top:14px;border-top:1px solid oklch(0.28 0.010 250);
+    font-size:13.5px;color:var(--muted-2)}
+  .source-line b{color:var(--mint);font-weight:500}
+  .trace{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+  .trace-row{display:flex;gap:10px;align-items:center;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+    font:400 12px/1.3 "IBM Plex Mono",monospace;color:var(--muted-2)}
+  .trace-row b{color:var(--blue);font-weight:500}
+  .trace-row .ms{margin-left:auto;white-space:nowrap}
+  .pending{display:flex;gap:7px;align-items:center;padding:4px 0}
+  .pending i{width:6px;height:6px;border-radius:50%;background:var(--muted-2);animation:omblink 1.2s infinite}
+  .pending i:nth-child(2){animation-delay:.2s}
+  .pending i:nth-child(3){animation-delay:.4s}
+  .pending span{margin-left:6px;font-size:14px;color:var(--muted-2)}
+  .suggestions{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:10px;margin-top:4px}
+  .suggestion{text-align:left;background:var(--surface);border:1px solid var(--line);color:oklch(0.90 0.006 250);
+    border-radius:12px;padding:14px 15px;cursor:pointer;font-size:14.5px;line-height:1.45}
+  .suggestion:hover{border-color:var(--mint)}
+  .ask-footer{border-top:1px solid var(--line);background:var(--surface);padding:16px 30px 18px}
+  .ask-footer-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+  .ask-row{display:flex;gap:10px}
+  .ask-input{flex:1;background:var(--bg);color:var(--text);border:1px solid var(--line);
+    border-radius:12px;padding:0 16px;height:52px;font-size:16px}
+  .ask-input:focus{border-color:var(--mint);outline:none}
+  .ask-send{background:var(--mint);color:var(--bg);border:0;border-radius:12px;height:52px;
+    padding:0 26px;font-weight:600;font-size:15.5px;cursor:pointer}
+  .ask-send:hover{background:var(--blue)}
+  .ask-send:disabled{opacity:.5;cursor:default}
+  .writes-row{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13.5px;color:var(--muted-2)}
+  .switch{width:40px;height:23px;border-radius:999px;border:1px solid var(--line);background:transparent;
+    cursor:pointer;padding:2px;display:flex;justify-content:flex-start;align-items:center}
+  .switch.on{border-color:var(--mint);background:var(--mint);justify-content:flex-end}
+  .switch .knob{width:17px;height:17px;border-radius:50%;background:oklch(0.50 0.010 250)}
+  .switch.on .knob{background:var(--bg)}
+
+  /* ---- generic page ---- */
+  .page{flex:1;overflow-y:auto;padding:28px 30px 44px}
+  .page-inner{margin:0 auto;display:flex;flex-direction:column;gap:20px}
+  .page-inner.w-team,.page-inner.w-reports{max-width:940px}
+  .page-inner.w-handbook{max-width:860px}
+  .page-inner.w-activity{max-width:780px}
+  .page-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .page-head h1{margin:0;font-size:24px;font-weight:600;letter-spacing:-.01em}
+  .page-head p{margin:6px 0 0;color:var(--muted);font-size:14.5px}
+  .btn-primary{margin-left:auto;background:var(--mint);color:var(--bg);border:0;border-radius:11px;
+    height:44px;padding:0 20px;font-weight:600;font-size:15px;cursor:pointer}
+  .btn-primary:hover{background:var(--blue)}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;
+    display:flex;flex-direction:column;gap:15px}
+  .panel-title{font-weight:600;font-size:16px}
+  .field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:13px}
+  .field{display:flex;flex-direction:column;gap:7px;font-size:13px;color:var(--muted)}
+  .field input,.field select,.field textarea{background:var(--bg);color:var(--text);
+    border:1px solid var(--line);border-radius:10px;padding:0 13px;height:44px;font-size:15px}
+  .field textarea{padding:12px 13px;height:auto;min-height:150px;resize:vertical}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--mint);outline:none}
+  .panel-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn-solid{background:var(--mint);color:var(--bg);border:0;border-radius:10px;height:44px;
+    padding:0 22px;font-weight:600;font-size:15px;cursor:pointer}
+  .btn-solid:hover{background:var(--blue)}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:10px;
+    height:44px;padding:0 20px;font-size:15px;cursor:pointer}
+  .btn-ghost:hover{color:var(--text)}
+  .btn-text{background:transparent;border:0;color:var(--muted-2);font-size:14.5px;cursor:pointer;
+    height:44px;padding:0 6px}
+  .btn-text:hover{color:var(--text)}
+  .file-label{display:inline-flex;align-items:center;height:44px;padding:0 18px;border:1px solid var(--line);
+    border-radius:10px;color:var(--muted);font-size:14.5px;cursor:pointer}
+  .file-label:hover{border-color:var(--mint);color:var(--mint)}
+
+  .search-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .search-input{flex:1;min-width:220px;background:var(--surface);color:var(--text);
+    border:1px solid var(--line);border-radius:999px;height:42px;padding:0 18px;font-size:14.5px}
+  .search-input:focus{border-color:var(--mint);outline:none}
+  .chip{cursor:pointer;border-radius:999px;padding:9px 17px;font-size:14.5px;
+    background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .chip.active{background:var(--mint);color:var(--bg);border-color:var(--mint)}
+
+  .card-list{display:flex;flex-direction:column;gap:10px}
+  .person-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px 18px;
+    display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+  .p-avatar{width:40px;height:40px;border-radius:50%;background:var(--surface-2);display:grid;
+    place-items:center;font-weight:500;font-size:14px;flex:0 0 auto}
+  .p-name{font-weight:600;font-size:16px}
+  .p-name.inactive{color:var(--muted)}
+  .p-line{font-size:13.5px;color:var(--muted-2)}
+  .p-badge{font-size:13px;color:var(--muted-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+  .p-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn-sm{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:10px;
+    height:38px;padding:0 15px;font-size:14px;cursor:pointer}
+  .btn-sm:hover{border-color:var(--mint);color:var(--mint)}
+  .btn-sm.mint{border-color:var(--mint);color:var(--mint)}
+  .edit-panel{width:100%;border-top:1px solid oklch(0.28 0.010 250);padding-top:15px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:13px;align-items:end}
+  .hint{font-size:13px;color:var(--muted-2)}
+
+  .doc-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:17px 19px}
+  .doc-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .doc-title{font-weight:600;font-size:16px}
+  .doc-meta{font-size:13px;color:var(--muted-2)}
+  .doc-remove{margin-left:auto;border-radius:10px;height:36px;padding:0 14px;font-size:14px;cursor:pointer;
+    background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .doc-remove.confirm{background:var(--rose);border-color:var(--rose);color:var(--bg);font-weight:600}
+
+  .empty-dashed{border:1px dashed oklch(0.32 0.012 250);border-radius:14px;padding:34px;
+    text-align:center;color:var(--muted)}
+
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:17px 19px}
+  .stat-label{font-size:13.5px;color:var(--muted)}
+  .stat-value{font-size:30px;font-weight:600;margin-top:6px;letter-spacing:-.015em}
+  .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:28px}
+  .chart-title{font-weight:600;font-size:16px;margin-bottom:16px}
+  .chart-rows{display:flex;flex-direction:column;gap:13px}
+  .chart-row{display:grid;grid-template-columns:110px 1fr 34px;gap:13px;align-items:center;font-size:14.5px}
+  .chart-label{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chart-track{height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+  .chart-fill{height:100%;border-radius:5px}
+  .chart-value{text-align:right;color:oklch(0.85 0.006 250)}
+  .summary-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;
+    display:flex;flex-direction:column;gap:14px}
+  .summary-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .summary-head b{font-weight:600;font-size:16px}
+  .summary-head .sub{font-size:14px;color:var(--muted);margin-top:4px}
+  .summary-text{border-top:1px solid oklch(0.28 0.010 250);padding-top:15px;white-space:pre-wrap;
+    font-size:15px;color:oklch(0.88 0.006 250)}
+
+  .activity-row{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 17px;
+    display:flex;align-items:center;gap:14px}
+  .activity-dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:oklch(0.45 0.010 250)}
+  .activity-dot.agent{background:var(--mint)}
+  .activity-text{flex:1;font-size:15px}
+  .activity-time{font-size:13px;color:var(--muted-2);white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="mark">O</div>
+    <div class="brand-name">OpsMind</div>
+  </div>
+  <nav id="nav"></nav>
+  <div class="head-right">
+    <div class="status-pill" id="status-pill"><span class="status-dot"></span>connecting…</div>
+    <div class="signed-in" id="signed-in">Signed in</div>
+    <div class="avatar" id="avatar">··</div>
+  </div>
+</header>
+
+<div id="toast" style="display:none"></div>
+
+<div id="app"></div>
+
+<script>
+"use strict";
+
+const ROLE_LABEL = { intern: "Intern", engineer: "Engineer", manager: "Manager", admin: "Admin" };
+const NAV = [
+  { key: "ask", label: "Ask" },
+  { key: "team", label: "Team" },
+  { key: "handbook", label: "Handbook" },
+  { key: "reports", label: "Reports" },
+  { key: "activity", label: "Activity" },
+];
+
+let sid = localStorage.getItem("opsmind.session");
+if (!sid) { sid = "s-" + Math.random().toString(36).slice(2, 9); localStorage.setItem("opsmind.session", sid); }
+
+const state = {
+  screen: "ask",
+  toast: "", toastErr: false,
+  user: { email: "dev@local" },
+
+  turns: [], draft: "", pending: false, writes: false,
+
+  people: null, peopleLoading: false,
+  search: "", roleFilter: "everyone",
+  editingEmail: null,
+  showAddForm: false,
+  form: { name: "", email: "", role: "intern", department: "", joined_on: today() },
+
+  docs: null, docsLoading: false,
+  showDocForm: false,
+  docForm: { title: "", text: "" },
+  confirmDocId: null,
+
+  reportText: "", reportBusy: false,
+
+  audit: null, auditLoading: false,
+};
+
+let toastTimer = null;
+
+function today() { return new Date().toISOString().slice(0, 10); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+function clip(s, n) { s = String(s); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "") + "…" : s; }
+function initialsOf(name) { return String(name).split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase(); }
+function pretty(d) {
+  if (!d) return "";
+  const date = new Date(String(d).slice(0, 10) + "T00:00:00");
+  return isNaN(date) ? d : date.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
+}
+function clock(v) {
+  const date = v ? new Date(v) : new Date();
+  return isNaN(date) ? "" : date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function flash(msg, isErr) {
+  state.toast = msg; state.toastErr = !!isErr;
+  renderToast();
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { state.toast = ""; renderToast(); }, 3800);
+}
+function renderToast() {
+  const el = document.getElementById("toast");
+  if (!state.toast) { el.style.display = "none"; return; }
+  el.style.display = "block";
+  el.className = state.toastErr ? "err" : "";
+  el.textContent = state.toast;
+}
+
+// --------------------------------------------------------------------- api
+async function api(path, opts) {
+  opts = opts || {};
+  const o = { method: opts.method || "GET" };
+  if (opts.form) {
+    o.body = opts.form;
+  } else if (opts.body !== undefined) {
+    o.headers = { "Content-Type": "application/json" };
+    o.body = JSON.stringify(opts.body);
+  }
+  const r = await fetch(path, o);
+  let data = null;
+  try { data = await r.json(); } catch (e) {}
+  if (!r.ok) {
+    const detail = data && data.detail;
+    throw new Error(typeof detail === "string" ? detail : (r.status === 404 ? "Not found." : "Request failed (" + r.status + ")."));
+  }
+  return data;
+}
+
+// ------------------------------------------------------------------ loads
+async function loadHealth() {
+  try {
+    const h = await api("/health");
+    const c = h.capabilities || {};
+    state.health = h; state.healthOk = true;
+    document.getElementById("signed-in").textContent = "Signed in as " + (h.auth_mode === "firebase" ? "you" : "Operator");
+    document.getElementById("avatar").textContent = initialsOf("Operator");
+    const dot = c.gemini ? "on" : "mock";
+    const pill = document.getElementById("status-pill");
+    pill.innerHTML = '<span class="status-dot ' + dot + '"></span>' + esc(c.gemini ? h.model : "rule planner");
+    pill.title = "mongo " + (c.mongo ? "live" : "in-memory") + " · vectors " + ((h.vector_store||{}).mode||"?") + " · " + (h.celery_broker ? "celery" : "inline tasks");
+  } catch (e) {
+    document.getElementById("status-pill").innerHTML = '<span class="status-dot"></span>api unreachable';
+  }
+}
+
+async function loadPeople(force) {
+  if (state.peopleLoading || (state.people && !force)) return;
+  state.peopleLoading = true;
+  try {
+    state.people = await api("/employees?limit=200");
+  } catch (e) {
+    flash("Could not load the team: " + e.message, true);
+    state.people = state.people || [];
+  } finally {
+    state.peopleLoading = false;
+    render();
+  }
+}
+
+async function loadDocs(force) {
+  if (state.docsLoading || (state.docs && !force)) return;
+  state.docsLoading = true;
+  try {
+    const all = await api("/documents");
+    state.docs = all.filter(d => d.kind === "policy" || d.kind === "sop");
+  } catch (e) {
+    flash("Could not load the handbook: " + e.message, true);
+    state.docs = state.docs || [];
+  } finally {
+    state.docsLoading = false;
+    render();
+  }
+}
+
+async function loadAudit(force) {
+  if (state.auditLoading || (state.audit && !force)) return;
+  state.auditLoading = true;
+  try {
+    state.audit = await api("/audit?limit=200");
+  } catch (e) {
+    flash("Could not load activity: " + e.message, true);
+    state.audit = state.audit || [];
+  } finally {
+    state.auditLoading = false;
+    render();
+  }
+}
+
+async function loadHistory() {
+  try {
+    const turns = await api("/agent/history/" + sid);
+    state.turns = turns.map(t => ({
+      role: t.role === "user" ? "user" : "agent",
+      content: t.content, tool_calls: t.tool_calls || [], citations: t.citations || [],
+    }));
+    render();
+  } catch (e) {}
+}
+
+// -------------------------------------------------------------------- nav
+function go(screen) {
+  state.screen = screen;
+  if (screen === "team") loadPeople();
+  if (screen === "handbook") loadDocs();
+  if (screen === "reports") { loadPeople(); loadDocs(); }
+  if (screen === "activity") loadAudit(true);
+  render();
+}
+
+// -------------------------------------------------------------------- ask
+async function submitAsk() {
+  const q = state.draft.trim();
+  if (!q || state.pending) return;
+  state.draft = "";
+  state.turns.push({ role: "user", content: q });
+  state.pending = true;
+  render();
+  try {
+    const res = await api("/agent/chat", { method: "POST", body: { session_id: sid, message: q, allow_writes: state.writes } });
+    state.turns.push({ role: "agent", content: res.reply, tool_calls: res.tool_calls || [], citations: res.citations || [] });
+  } catch (e) {
+    state.turns.push({ role: "agent", content: "Request failed: " + e.message + " Is the API running?", error: true });
+  } finally {
+    state.pending = false;
+    render();
+  }
+}
+function askSuggestion(q) { state.draft = q; submitAsk(); }
+
+// -------------------------------------------------------------------- team
+function setFormField(k, v) { state.form[k] = v; }
+
+async function addEmployee() {
+  const f = state.form;
+  if (!f.name.trim()) return flash("Please add a name.", true);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) return flash("That email does not look right.", true);
+  try {
+    await api("/employees", { method: "POST", body: {
+      name: f.name.trim(), email: f.email.trim(), role: f.role,
+      department: f.department.trim() || "unassigned", joined_on: f.joined_on,
+    }});
+    flash(f.name.trim() + " was added to the team.");
+    state.form = { name: "", email: "", role: "intern", department: f.department, joined_on: today() };
+    state.showAddForm = false;
+    await loadPeople(true);
+  } catch (e) {
+    flash(e.message, true);
+  }
+}
+
+async function patchEmployee(email, patch) {
+  try {
+    await api("/employees/" + encodeURIComponent(email), { method: "PATCH", body: patch });
+    await loadPeople(true);
+  } catch (e) {
+    flash(e.message, true);
+  }
+}
+
+async function toggleActive(p) {
+  try {
+    if (p.active) {
+      await api("/employees/" + encodeURIComponent(p.email), { method: "DELETE" });
+      flash(p.name + " is now marked as left.");
+    } else {
+      await api("/employees/" + encodeURIComponent(p.email), { method: "PATCH", body: { active: true } });
+      flash(p.name + " is active again.");
+    }
+    await loadPeople(true);
+  } catch (e) {
+    flash(e.message, true);
+  }
+}
+
+// ---------------------------------------------------------------- handbook
+function onDocFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.docForm.text = String(reader.result || "");
+    if (!state.docForm.title) state.docForm.title = file.name.replace(/\.[a-z0-9]+$/i, "");
+    render();
+  };
+  reader.readAsText(file);
+}
+
+async function indexDoc() {
+  const d = state.docForm;
+  if ((d.text || "").trim().length < 40) return flash("Please paste a bit more text.", true);
+  const title = d.title.trim() || "Untitled document";
+  const blob = new Blob([d.text], { type: "text/plain" });
+  const fd = new FormData();
+  fd.append("file", blob, title.replace(/[\\/]/g, "-") + ".txt");
+  fd.append("kind", "policy");
+  fd.append("index_for_rag", "true");
+  try {
+    await api("/documents/upload", { method: "POST", form: fd });
+    flash(title + " saved. OpsMind can answer questions from it now.");
+    state.docForm = { title: "", text: "" };
+    state.showDocForm = false;
+    await loadDocs(true);
+  } catch (e) {
+    flash(e.message, true);
+  }
+}
+
+async function removeDoc(doc) {
+  try {
+    await api("/documents/" + encodeURIComponent(doc.id), { method: "DELETE" });
+    flash(doc.title + " was removed.");
+    state.confirmDocId = null;
+    await loadDocs(true);
+  } catch (e) {
+    flash(e.message, true);
+  }
+}
+
+// ---------------------------------------------------------------- reports
+async function makeReport() {
+  state.reportBusy = true; render();
+  try {
+    const r = await api("/tasks/report/preview?period=month");
+    const lines = [
+      "Team size: " + r.active + " active" + ((r.total - r.active) ? ", " + (r.total - r.active) + " marked as left" : ""),
+      "Recent joiners: " + (r.new_joiners.length ? r.new_joiners.map(p => p.name + " (" + pretty(p.joined_on) + ")").join(", ") : "none in the last month"),
+      "Teams: " + Object.entries(r.by_department).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + " " + v).join(", "),
+      "Handbook: " + (state.docs ? state.docs.length : 0) + " document" + ((state.docs && state.docs.length === 1) ? "" : "s") + " available for questions",
+    ];
+    state.reportText = lines.join("\n");
+  } catch (e) {
+    flash(e.message, true);
+  } finally {
+    state.reportBusy = false;
+    render();
+  }
+}
+
+// --------------------------------------------------------------- activity
+function auditText(row) {
+  const who = row.actor === "agent" ? "OpsMind" : "You";
+  const p = row.payload || {};
+  switch (row.action) {
+    case "create_employee": return who + " added " + (p.email || "someone") + " to the team.";
+    case "deactivate_employee": return who + " marked " + (p.email || "someone") + " as left.";
+    case "employee.update":
+      if (p.active === true) return who + " brought " + (p.email || "someone") + " back to active.";
+      if (p.role) return who + " changed " + (p.email || "someone") + "'s role to " + (ROLE_LABEL[p.role] || p.role).toLowerCase() + ".";
+      if (p.department) return who + " moved " + (p.email || "someone") + " to " + p.department + ".";
+      return who + " updated " + (p.email || "someone") + ".";
+    case "document.upload": return who + " added a " + (p.kind || "") + " document to the handbook.";
+    default: return who + " performed " + row.action + ".";
+  }
+}
+
+// -------------------------------------------------------------- rendering
+function navStyle(active) { return "nav-btn" + (active ? " active" : ""); }
+
+function renderNav() {
+  document.getElementById("nav").innerHTML = NAV.map(n =>
+    '<button class="' + navStyle(n.key === state.screen) + '" data-go="' + n.key + '">' + n.label + '</button>'
+  ).join("");
+}
+
+function renderAskTurn(t) {
+  if (t.role === "user") return '<div class="turn-user">' + esc(t.content) + '</div>';
+  let html = '<div class="turn-agent' + (t.error ? " error" : "") + '"><div class="body">' + esc(t.content) + '</div>';
+  const calls = t.tool_calls || [];
+  if (calls.length) {
+    html += '<div class="trace">' + calls.map(c =>
+      '<div class="trace-row"><b>' + esc(c.name) + '</b><span>' + esc(c.result_summary || "") + '</span><span class="ms">' +
+      (c.duration_ms || 0) + 'ms ' + (c.ok ? "✓" : "✕") + '</span></div>'
+    ).join("") + '</div>';
+  }
+  const cites = t.citations || [];
+  if (cites.length) {
+    const titles = [...new Set(cites.map(c => c.title))];
+    html += '<div class="source-line">Found in <b>' + esc(titles[0]) + '</b>' +
+      (titles.length > 1 ? " and " + (titles.length - 1) + " more" : "") + '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderAsk() {
+  const showIntro = state.turns.length === 0;
+  const suggestions = [
+    "How much leave do interns get?",
+    "Who is on the design team?",
+    "How many people do we have?",
+    "What is the notice period for a manager?",
+  ];
+  return (
+    '<div class="ask-wrap">' +
+      '<div class="ask-scroll"><div class="ask-inner">' +
+        (showIntro ?
+          '<div class="intro"><h1>What do you need?</h1>' +
+          '<p>Ask about your team or your company handbook in ordinary words. OpsMind looks it up and tells you the answer.</p></div>'
+          : "") +
+        state.turns.map(renderAskTurn).join("") +
+        (state.pending ?
+          '<div class="pending"><i></i><i></i><i></i><span>Looking it up…</span></div>' : "") +
+        '<div class="suggestions">' + suggestions.map(s =>
+          '<button class="suggestion" data-suggest="' + esc(s) + '">' + esc(s) + '</button>'
+        ).join("") + '</div>' +
+      '</div></div>' +
+      '<div class="ask-footer"><div class="ask-footer-inner">' +
+        '<div class="ask-row">' +
+          '<input id="ask-input" class="ask-input" placeholder="Ask anything about your team or handbook…" value="' + esc(state.draft) + '" />' +
+          '<button class="ask-send" id="ask-send"' + (state.pending ? " disabled" : "") + '>Ask</button>' +
+        '</div>' +
+        '<label class="writes-row"><button class="switch' + (state.writes ? " on" : "") + '" id="writes-toggle" type="button"><span class="knob"></span></button>' +
+        '<span>Let OpsMind make changes for me — like adding a new team member when I ask</span></label>' +
+      '</div></div>' +
+    '</div>'
+  );
+}
+
+function renderTeam() {
+  const s = state;
+  const all = s.people || [];
+  const q = s.search.trim().toLowerCase();
+  const filtered = all
+    .filter(p => s.roleFilter === "everyone" || (s.roleFilter === "left" ? !p.active : p.role === s.roleFilter))
+    .filter(p => s.roleFilter === "left" || p.active || q)
+    .filter(p => !q || (p.name + " " + p.email + " " + p.department).toLowerCase().includes(q));
+
+  const activeCount = all.filter(p => p.active).length;
+  const teams = new Set(all.filter(p => p.active).map(p => p.department)).size;
+
+  const filters = [["everyone", "Everyone"], ["intern", "Interns"], ["engineer", "Engineers"], ["manager", "Managers"], ["admin", "Admins"], ["left", "Left the team"]];
+
+  return (
+    '<div class="page"><div class="page-inner w-team">' +
+      '<div class="page-head"><div><h1>Your team</h1><p>' +
+        (s.people === null ? "Loading…" : activeCount + " people active" + ((all.length - activeCount) ? ", " + (all.length - activeCount) + " marked as left" : "") + " · " + teams + " teams") +
+      '</p></div><button class="btn-primary" data-action="toggle-add-form">' + (s.showAddForm ? "Close" : "Add someone") + '</button></div>' +
+
+      (s.showAddForm ?
+        '<div class="panel"><div class="panel-title">Add a team member</div><div class="field-grid">' +
+          '<label class="field">Full name<input id="f-name" value="' + esc(s.form.name) + '" placeholder="e.g. Aarav Shah" /></label>' +
+          '<label class="field">Work email<input id="f-email" value="' + esc(s.form.email) + '" placeholder="name@company.com" /></label>' +
+          '<label class="field">Role<select id="f-role">' + Object.keys(ROLE_LABEL).map(r =>
+            '<option value="' + r + '"' + (s.form.role === r ? " selected" : "") + '>' + ROLE_LABEL[r] + '</option>').join("") + '</select></label>' +
+          '<label class="field">Team<input id="f-department" value="' + esc(s.form.department) + '" placeholder="e.g. Design" /></label>' +
+          '<label class="field">Start date<input id="f-joined" type="date" value="' + esc(s.form.joined_on) + '" /></label>' +
+        '</div><div class="panel-actions">' +
+          '<button class="btn-solid" data-action="add-employee">Add to team</button>' +
+          '<button class="btn-ghost" data-action="toggle-add-form">Cancel</button>' +
+        '</div></div>' : "") +
+
+      '<div class="search-row">' +
+        '<input class="search-input" id="team-search" placeholder="Search by name, email or team" value="' + esc(s.search) + '" />' +
+        filters.map(([key, label]) => '<button class="chip' + (s.roleFilter === key ? " active" : "") + '" data-role-filter="' + key + '">' + label + '</button>').join("") +
+      '</div>' +
+
+      '<div class="card-list">' + filtered.map(p => {
+        const editing = s.editingEmail === p.email;
+        return '<div class="person-card">' +
+          '<div class="p-avatar">' + esc(initialsOf(p.name)) + '</div>' +
+          '<div style="min-width:170px;flex:1">' +
+            '<div class="p-name' + (p.active ? "" : " inactive") + '">' + esc(p.name) + '</div>' +
+            '<div class="p-line">' + ROLE_LABEL[p.role] + ' · ' + esc(p.department) + ' · started ' + pretty(p.joined_on) + '</div>' +
+          '</div>' +
+          (p.active ? "" : '<div class="p-badge">Left the team</div>') +
+          '<div class="p-actions">' +
+            '<button class="btn-sm' + (editing ? " mint" : "") + '" data-edit="' + esc(p.email) + '">' + (editing ? "Done" : "Edit") + '</button>' +
+            '<button class="btn-sm' + (p.active ? "" : " mint") + '" data-toggle-active="' + esc(p.email) + '">' + (p.active ? "Mark as left" : "Bring back") + '</button>' +
+          '</div>' +
+          (editing ?
+            '<div class="edit-panel">' +
+              '<label class="field">Role<select data-role-select="' + esc(p.email) + '">' + Object.keys(ROLE_LABEL).map(r =>
+                '<option value="' + r + '"' + (p.role === r ? " selected" : "") + '>' + ROLE_LABEL[r] + '</option>').join("") + '</select></label>' +
+              '<label class="field">Team<input data-dept-input="' + esc(p.email) + '" value="' + esc(p.department) + '" /></label>' +
+              '<div class="hint">Role updates instantly. Team saves when you click away.</div>' +
+            '</div>' : "") +
+        '</div>';
+      }).join("") + '</div>' +
+
+      (s.people !== null && filtered.length === 0 ? '<div class="empty-dashed">Nobody matches that search.</div>' : "") +
+    '</div></div>'
+  );
+}
+
+function renderHandbook() {
+  const s = state;
+  const docs = s.docs || [];
+  return (
+    '<div class="page"><div class="page-inner w-handbook">' +
+      '<div class="page-head"><div><h1>Company handbook</h1><p>' +
+        (s.docs === null ? "Loading…" : docs.length + " document" + (docs.length === 1 ? "" : "s") + " OpsMind can answer from") +
+      '</p></div><button class="btn-primary" data-action="toggle-doc-form">' + (s.showDocForm ? "Close" : "Add a document") + '</button></div>' +
+
+      (s.showDocForm ?
+        '<div class="panel"><div class="panel-title">Add a document</div>' +
+          '<label class="field">What is it called?<input id="d-title" value="' + esc(s.docForm.title) + '" placeholder="e.g. Travel policy 2026" /></label>' +
+          '<label class="field">Paste the text<textarea id="d-text" placeholder="Paste the policy or process text here.">' + esc(s.docForm.text) + '</textarea></label>' +
+          '<div class="panel-actions">' +
+            '<button class="btn-solid" data-action="index-doc">Save document</button>' +
+            '<label class="file-label">Upload a text file instead<input type="file" accept=".txt,.md,.csv" id="d-file" style="display:none" /></label>' +
+            '<button class="btn-text" data-action="toggle-doc-form">Cancel</button>' +
+          '</div></div>' : "") +
+
+      '<div class="card-list">' + docs.map(d => {
+        const confirming = s.confirmDocId === d.id;
+        return '<div class="doc-card"><div class="doc-top">' +
+          '<span class="doc-title">' + esc(d.title) + '</span>' +
+          '<span class="doc-meta">' + d.chunks + ' section' + (d.chunks === 1 ? "" : "s") + ' · uploaded ' + pretty(d.uploaded_at) + '</span>' +
+          '<button class="doc-remove' + (confirming ? " confirm" : "") + '" data-remove-doc="' + esc(d.id) + '">' + (confirming ? "Yes, remove" : "Remove") + '</button>' +
+        '</div></div>';
+      }).join("") + '</div>' +
+
+      (s.docs !== null && docs.length === 0 ?
+        '<div class="empty-dashed">No documents yet. Add one and OpsMind can start answering policy questions from it.</div>' : "") +
+    '</div></div>'
+  );
+}
+
+function renderReports() {
+  const s = state;
+  const all = s.people || [];
+  const active = all.filter(p => p.active);
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 10);
+
+  const byDept = {}, byRole = {};
+  active.forEach(p => {
+    byDept[p.department] = (byDept[p.department] || 0) + 1;
+    byRole[ROLE_LABEL[p.role]] = (byRole[ROLE_LABEL[p.role]] || 0) + 1;
+  });
+  const chartOf = (label, buckets, color) => {
+    const max = Math.max(1, ...Object.values(buckets));
+    const rows = Object.entries(buckets).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+      '<div class="chart-row"><div class="chart-label">' + esc(k) + '</div>' +
+      '<div class="chart-track"><div class="chart-fill" style="width:' + Math.round(v / max * 100) + '%;background:' + color + '"></div></div>' +
+      '<div class="chart-value">' + v + '</div></div>'
+    ).join("");
+    return '<div><div class="chart-title">' + label + '</div><div class="chart-rows">' + (rows || '<div class="hint">No data yet.</div>') + '</div></div>';
+  };
+
+  const stats = [
+    { label: "People on the team", value: active.length },
+    { label: "Teams", value: Object.keys(byDept).length },
+    { label: "Started recently", value: active.filter(p => p.joined_on >= monthStart).length },
+    { label: "Handbook documents", value: s.docs ? s.docs.length : "…" },
+  ];
+
+  return (
+    '<div class="page"><div class="page-inner w-reports">' +
+      '<div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-.01em">Reports</h1>' +
+      '<p style="margin:6px 0 0;color:var(--muted);font-size:14.5px">A picture of the team right now.</p></div>' +
+      '<div class="stats-grid">' + stats.map(m =>
+        '<div class="stat-card"><div class="stat-label">' + m.label + '</div><div class="stat-value">' + m.value + '</div></div>'
+      ).join("") + '</div>' +
+      '<div class="charts-grid">' + chartOf("People per team", byDept, "var(--mint)") + chartOf("People per role", byRole, "var(--blue)") + '</div>' +
+      '<div class="summary-card"><div class="summary-head"><div><b>Monthly team summary</b>' +
+        '<div class="sub">Who joined, who left, and how each team is sized.</div></div>' +
+        '<button class="btn-primary" data-action="make-report"' + (s.reportBusy ? " disabled" : "") + '>' + (s.reportBusy ? "Working…" : (s.reportText ? "Refresh summary" : "Create summary")) + '</button></div>' +
+        (s.reportText ? '<div class="summary-text">' + esc(s.reportText) + '</div>' : "") +
+      '</div>' +
+    '</div></div>'
+  );
+}
+
+function renderActivity() {
+  const s = state;
+  const rows = s.audit || [];
+  return (
+    '<div class="page"><div class="page-inner w-activity">' +
+      '<div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-.01em">Recent activity</h1>' +
+      '<p style="margin:6px 0 0;color:var(--muted);font-size:14.5px">Every change made here, by you or by OpsMind.</p></div>' +
+      '<div class="card-list">' + rows.map(r =>
+        '<div class="activity-row"><span class="activity-dot' + (r.actor === "agent" ? " agent" : "") + '"></span>' +
+        '<div class="activity-text">' + esc(auditText(r)) + '</div>' +
+        '<div class="activity-time">' + esc(clock(r.at)) + '</div></div>'
+      ).join("") + '</div>' +
+      (s.audit !== null && rows.length === 0 ?
+        '<div class="empty-dashed">Nothing has changed yet. Add someone to your team and it will show up here.</div>' : "") +
+    '</div></div>'
+  );
+}
+
+function render() {
+  renderNav();
+  renderToast();
+  const app = document.getElementById("app");
+  if (state.screen === "ask") app.innerHTML = renderAsk();
+  else if (state.screen === "team") app.innerHTML = renderTeam();
+  else if (state.screen === "handbook") app.innerHTML = renderHandbook();
+  else if (state.screen === "reports") app.innerHTML = renderReports();
+  else if (state.screen === "activity") app.innerHTML = renderActivity();
+
+  if (state.screen === "ask") {
+    const scroll = document.querySelector(".ask-scroll");
+    if (scroll) scroll.scrollTop = scroll.scrollHeight;
+    const input = document.getElementById("ask-input");
+    if (input) input.focus();
+  }
+}
+
+// -------------------------------------------------------------- delegation
+document.addEventListener("click", (e) => {
+  const navBtn = e.target.closest("[data-go]");
+  if (navBtn) return go(navBtn.dataset.go);
+
+  const suggest = e.target.closest("[data-suggest]");
+  if (suggest) return askSuggestion(suggest.dataset.suggest);
+
+  if (e.target.closest("#ask-send")) return submitAsk();
+  if (e.target.closest("#writes-toggle")) { state.writes = !state.writes; return render(); }
+
+  const action = e.target.closest("[data-action]");
+  if (action) {
+    const a = action.dataset.action;
+    if (a === "toggle-add-form") { state.showAddForm = !state.showAddForm; return render(); }
+    if (a === "add-employee") return addEmployee();
+    if (a === "toggle-doc-form") { state.showDocForm = !state.showDocForm; return render(); }
+    if (a === "index-doc") return indexDoc();
+    if (a === "make-report") return makeReport();
+  }
+
+  const edit = e.target.closest("[data-edit]");
+  if (edit) { const email = edit.dataset.edit; state.editingEmail = state.editingEmail === email ? null : email; return render(); }
+
+  const toggleActiveBtn = e.target.closest("[data-toggle-active]");
+  if (toggleActiveBtn) {
+    const p = (state.people || []).find(x => x.email === toggleActiveBtn.dataset.toggleActive);
+    if (p) toggleActive(p);
+    return;
+  }
+
+  const removeDocBtn = e.target.closest("[data-remove-doc]");
+  if (removeDocBtn) {
+    const id = removeDocBtn.dataset.removeDoc;
+    if (state.confirmDocId === id) {
+      const doc = (state.docs || []).find(d => d.id === id);
+      if (doc) removeDoc(doc);
+    } else {
+      state.confirmDocId = id;
+      render();
+    }
+    return;
+  }
+
+  const roleFilter = e.target.closest("[data-role-filter]");
+  if (roleFilter) { state.roleFilter = roleFilter.dataset.roleFilter; return render(); }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.target && e.target.id === "ask-input" && e.key === "Enter") { e.preventDefault(); submitAsk(); }
+});
+
+document.addEventListener("input", (e) => {
+  const id = e.target.id;
+  if (id === "ask-input") state.draft = e.target.value;
+  else if (id === "team-search") { state.search = e.target.value; render(); }
+  else if (id === "f-name") state.form.name = e.target.value;
+  else if (id === "f-email") state.form.email = e.target.value;
+  else if (id === "f-department") state.form.department = e.target.value;
+  else if (id === "d-title") state.docForm.title = e.target.value;
+  else if (id === "d-text") state.docForm.text = e.target.value;
+  else {
+    const deptInput = e.target.closest("[data-dept-input]");
+    if (deptInput) {
+      const email = deptInput.dataset.deptInput;
+      const p = (state.people || []).find(x => x.email === email);
+      if (p) p.department = e.target.value;
+    }
+  }
+});
+
+document.addEventListener("change", (e) => {
+  const id = e.target.id;
+  if (id === "f-role") state.form.role = e.target.value;
+  else if (id === "f-joined") state.form.joined_on = e.target.value;
+  else if (id === "d-file") return onDocFile(e.target);
+
+  const roleSelect = e.target.closest("[data-role-select]");
+  if (roleSelect) return patchEmployee(roleSelect.dataset.roleSelect, { role: e.target.value });
+});
+
+document.addEventListener("blur", (e) => {
+  const deptInput = e.target.closest && e.target.closest("[data-dept-input]");
+  if (deptInput) {
+    const email = deptInput.dataset.deptInput;
+    const p = (state.people || []).find(x => x.email === email);
+    if (p) patchEmployee(email, { department: e.target.value });
+  }
+}, true);
+
+// ------------------------------------------------------------------- boot
+render();
+loadHealth();
+loadHistory();
+</script>
+</body>
+</html>

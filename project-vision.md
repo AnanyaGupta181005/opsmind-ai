@@ -1,31 +1,25 @@
-# Project Vision: OpsMind AI
+# OpsMind AI — project vision
 
-## 1. Overview
-OpsMind AI is an intelligent agent designed to bridge the gap between natural language user intent and traditional structured data stores. It empowers non-technical users to query, analyze, and visualize data residing in SQL (PostgreSQL, MySQL) and NoSQL (MongoDB, DynamoDB) environments without writing code.
+## The problem
+Operational knowledge in a company is split between a database nobody queries directly
+and a handbook nobody reads. Answering "can this intern carry leave over?" or "who joined
+last month?" means a person stitching those two together by hand.
 
-## 2. Core Architecture
-The interaction flow follows a strict "Interpret-Generate-Execute" loop to ensure accuracy and security.
+## The thesis
+A manager agent should do both: query structured records **and** retrieve unstructured
+policy, then act. Two things make that trustworthy rather than impressive-looking:
 
-### The Workflow
-1.  **Intent Recognition (NLU):** The user provides a natural language query (e.g., "Show me the top 5 users by spend last month"). The LLM parses this to understand the *intent* (ranking/aggregation) and *entities* (users, spend).
-2.  **Schema Retrieval:** The agent fetches the relevant database schema (table names, column types, relationships) to understand the data structure. It does *not* fetch actual data at this stage.
-3.  **Query Generation (Text-to-Syntax):**
-    * **SQL:** Generates ANSI SQL or dialect-specific SQL (e.g., `SELECT * FROM users...`).
-    * **NoSQL:** Generates JSON-based aggregation pipelines or specific API calls.
-4.  **Safety Layer:** A middleware layer validates the generated query to prevent injection attacks and ensures the query is Read-Only (blocking `DROP`, `DELETE`, or `UPDATE` commands).
-5.  **Execution & Synthesis:** The query is executed against the database. The raw JSON/Tabular results are returned to the AI, which summarizes them into a human-readable answer.
+1. **Grounding.** Policy answers must come from retrieved passages and cite them, and must
+   refuse when the evidence is not there.
+2. **Legibility.** Every tool call is shown — name, arguments, result summary, duration.
+   A reviewer can see exactly what the agent did, not just what it said.
 
-## 3. Technical Stack Strategy
+## Non-goals
+- Not a general chatbot. If a question is not answerable by a tool or the indexed corpus,
+  the correct output is a refusal and a routing suggestion.
+- Not autonomous by default. Write tools are withheld unless the session arms them.
 
-| Component | Technology Choices |
-| :--- | :--- |
-| **LLM Engine** | OpenAI GPT-4o, Claude 3.5 Sonnet, or Llama 3 (Self-hosted) |
-| **Orchestration** | LangChain or LlamaIndex |
-| **SQL Interface** | SQLAlchemy (Python) for generic SQL adaptation |
-| **NoSQL Interface** | PyMongo (MongoDB) or Boto3 (DynamoDB) |
-| **Backend** | FastAPI or Node.js |
-
-## 4. Security Principles
-* **Principle of Least Privilege:** The agent connects to the database using a restricted user account that has **strictly READ-ONLY** permissions.
-* **Human-in-the-Loop (Optional):** For complex queries, the agent presents the generated SQL to the user for confirmation before execution.
-* **Sanitization:** All inputs are sanitized to prevent Prompt Injection attacks that might attempt to leak schema details.
+## Design principles
+- **Degrade, never crash.** Each subsystem has a mock path and `/health` says which is live.
+- **One contract.** Pydantic schemas are shared by API, agent and UI.
+- **Boring infrastructure.** Multi-stage Docker, one compose file, no bespoke glue.

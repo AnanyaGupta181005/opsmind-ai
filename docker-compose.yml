@@ -1,0 +1,32 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  api:
+    build: { context: ., target: api }
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    depends_on:
+      redis: { condition: service_healthy }
+
+  worker:
+    build: { context: ., target: worker }
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis: { condition: service_healthy }
+
+  ui:
+    build: { context: ., target: ui }
+    env_file: .env
+    environment:
+      API_BASE_URL: http://api:8000
+    ports: ["8501:8501"]
+    depends_on: [api]

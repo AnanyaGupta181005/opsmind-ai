@@ -1,0 +1,42 @@
+# --- core ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-multipart==0.0.20
+httpx==0.28.1
+python-dotenv==1.0.1
+
+# --- ai ---
+google-generativeai==0.8.3
+
+# --- data ---
+motor==3.6.0
+pymongo==4.10.1
+supabase==2.11.0
+numpy==2.2.1
+
+# --- async ---
+celery==5.4.0
+redis==5.2.1
+
+# --- frontend ---
+streamlit==1.41.1
+pandas==2.2.3
+altair==5.5.0
+
+# --- automation ---
+playwright==1.49.1
+
+# --- auth ---
+firebase-admin==6.6.0
+PyJWT==2.10.1
+
+# --- ocr / docs ---
+pypdf==5.1.0
+Pillow==11.1.0
+
+# --- dev ---
+pytest==8.3.4
+pytest-asyncio==0.25.0
+ruff==0.8.6
